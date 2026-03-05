@@ -3,71 +3,144 @@ import math
 import mathutils
 import csv
 import os
+import cmath
+import random
 
-print("=== RIS-ISAC Blender Simulation Start ===")
+print("==== RIS-ISAC Simulation Start ====")
 
 # -------------------------------------------------
 # PARAMETERS
 # -------------------------------------------------
 
-frequency = 3.5e9
 c = 3e8
+fc = 3.5e9
+wavelength = c / fc
+
+Nc = 64  # OFDM subcarriers
 
 grid_size = 20
 area_size = 60
 uav_height = 100
 
+# multipath parameters
+reflection_loss = 0.6
+noise_power = 0.01
+
+# RIS phase
+ris_phase_random = True
+
 # -------------------------------------------------
-# CHECK OBJECTS
+# OBJECTS
 # -------------------------------------------------
 
-if "BS_1" not in bpy.data.objects:
-    print("ERROR: Object BS_1 not found")
-    raise Exception("Create BS_1 first")
+BS_names = ["BS_1", "BS_2"]
+RIS_names = ["RIS_1", "RIS_2"]
 
-if "RIS_1" not in bpy.data.objects:
-    print("ERROR: Object RIS_1 not found")
-    raise Exception("Create RIS_1 first")
+BS_list = []
+RIS_list = []
 
-BS = bpy.data.objects["BS_1"]
-RIS = bpy.data.objects["RIS_1"]
+for name in BS_names:
+    if name in bpy.data.objects:
+        BS_list.append(bpy.data.objects[name])
+    else:
+        print("WARNING:", name, "not found")
+
+for name in RIS_names:
+    if name in bpy.data.objects:
+        RIS_list.append(bpy.data.objects[name])
+    else:
+        print("WARNING:", name, "not found")
 
 scene = bpy.context.scene
 depsgraph = bpy.context.evaluated_depsgraph_get()
 
+print("BS count:", len(BS_list))
+print("RIS count:", len(RIS_list))
+
 # -------------------------------------------------
-# UAV GRID GENERATION
+# UAV GRID
 # -------------------------------------------------
 
 positions = []
 
 for i in range(grid_size):
     for j in range(grid_size):
+
         x = i * area_size / grid_size
         y = j * area_size / grid_size
+
         positions.append((x, y, uav_height))
 
-print("Generated UAV points:", len(positions))
+print("UAV points:", len(positions))
 
 # -------------------------------------------------
-# RAY FUNCTION
+# RAY TRACE FUNCTION
 # -------------------------------------------------
 
 def ray_distance(origin, target):
+
     direction = (target - origin).normalized()
+
     result, location, normal, index, obj, matrix = scene.ray_cast(
         depsgraph,
         origin,
         direction,
         distance=1000
     )
+
     if result:
         return (location - origin).length
     else:
         return (target - origin).length
 
+
 # -------------------------------------------------
-# SIMULATION LOOP
+# PATH GAIN MODEL
+# -------------------------------------------------
+
+def path_gain(distance):
+
+    if distance == 0:
+        return 0
+
+    gain = (wavelength / (4 * math.pi * distance))**2
+
+    return gain
+
+
+# -------------------------------------------------
+# CSI GENERATION
+# -------------------------------------------------
+
+def generate_csi(paths):
+
+    csi = []
+
+    for n in range(Nc):
+
+        f = fc + (n - Nc/2) * 15000
+
+        H = 0+0j
+
+        for gain, tau, phase in paths:
+
+            H += gain * cmath.exp(-1j*(2*math.pi*f*tau + phase))
+
+        # noise
+        noise = complex(
+            random.gauss(0, noise_power),
+            random.gauss(0, noise_power)
+        )
+
+        H += noise
+
+        csi.append(H)
+
+    return csi
+
+
+# -------------------------------------------------
+# MAIN SIMULATION
 # -------------------------------------------------
 
 results = []
@@ -75,24 +148,69 @@ results = []
 for idx, pos in enumerate(positions):
 
     uav = mathutils.Vector(pos)
-    bs_loc = BS.location
-    ris_loc = RIS.location
 
-    # Direct distance
-    d_direct = (uav - bs_loc).length
+    print("UAV point", idx)
 
-    # BS → RIS
-    d_br = ray_distance(bs_loc, ris_loc)
+    for k, BS in enumerate(BS_list):
 
-    # RIS → UAV
-    d_ru = ray_distance(ris_loc, uav)
+        bs_loc = BS.location
 
-    d_ris = d_br + d_ru
+        # ---------------------
+        # LOS PATH
+        # ---------------------
 
-    tau_direct = d_direct / c
-    tau_ris = d_ris / c
+        d_los = (uav - bs_loc).length
+        tau_los = d_los / c
+        gain_los = path_gain(d_los)
 
-    results.append([idx, d_direct, tau_direct, d_ris, tau_ris])
+        paths = [(gain_los, tau_los, 0)]
+
+        # ---------------------
+        # RIS PATHS
+        # ---------------------
+
+        for RIS in RIS_list:
+
+            ris_loc = RIS.location
+
+            d_br = ray_distance(bs_loc, ris_loc)
+            d_ru = ray_distance(ris_loc, uav)
+
+            d_ris = d_br + d_ru
+
+            tau_ris = d_ris / c
+
+            gain_ris = path_gain(d_ris) * reflection_loss
+
+            if ris_phase_random:
+                phase = random.uniform(0, 2*math.pi)
+            else:
+                phase = 0
+
+            paths.append((gain_ris, tau_ris, phase))
+
+        # ---------------------
+        # GENERATE CSI
+        # ---------------------
+
+        csi = generate_csi(paths)
+
+        # ---------------------
+        # SAVE DATA
+        # ---------------------
+
+        for sc, H in enumerate(csi):
+
+            results.append([
+                idx,
+                pos[0],
+                pos[1],
+                pos[2],
+                k,
+                sc,
+                H.real,
+                H.imag
+            ])
 
 print("Simulation finished.")
 
@@ -103,15 +221,27 @@ print("Simulation finished.")
 blend_dir = os.path.dirname(bpy.data.filepath)
 
 if blend_dir == "":
-    print("Save Blender file first!")
-    raise Exception("Save .blend file before running")
+    raise Exception("Save .blend file first")
 
-file_path = os.path.join(blend_dir, "channel_data.csv")
+file_path = os.path.join(blend_dir, "RIS_ISAC_dataset.csv")
 
 with open(file_path, "w", newline="") as f:
+
     writer = csv.writer(f)
-    writer.writerow(["id","d_direct","tau_direct","d_ris","tau_ris"])
+
+    writer.writerow([
+        "uav_id",
+        "x",
+        "y",
+        "z",
+        "bs_id",
+        "subcarrier",
+        "csi_real",
+        "csi_imag"
+    ])
+
     writer.writerows(results)
 
-print("Saved file to:", file_path)
-print("=== DONE ===")
+print("Dataset saved to:", file_path)
+
+print("==== DONE ====")
