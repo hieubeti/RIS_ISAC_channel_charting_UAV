@@ -1,0 +1,117 @@
+import bpy
+import math
+import mathutils
+import csv
+import os
+
+print("=== RIS-ISAC Blender Simulation Start ===")
+
+# -------------------------------------------------
+# PARAMETERS
+# -------------------------------------------------
+
+frequency = 3.5e9
+c = 3e8
+
+grid_size = 20
+area_size = 60
+uav_height = 100
+
+# -------------------------------------------------
+# CHECK OBJECTS
+# -------------------------------------------------
+
+if "BS_1" not in bpy.data.objects:
+    print("ERROR: Object BS_1 not found")
+    raise Exception("Create BS_1 first")
+
+if "RIS_1" not in bpy.data.objects:
+    print("ERROR: Object RIS_1 not found")
+    raise Exception("Create RIS_1 first")
+
+BS = bpy.data.objects["BS_1"]
+RIS = bpy.data.objects["RIS_1"]
+
+scene = bpy.context.scene
+depsgraph = bpy.context.evaluated_depsgraph_get()
+
+# -------------------------------------------------
+# UAV GRID GENERATION
+# -------------------------------------------------
+
+positions = []
+
+for i in range(grid_size):
+    for j in range(grid_size):
+        x = i * area_size / grid_size
+        y = j * area_size / grid_size
+        positions.append((x, y, uav_height))
+
+print("Generated UAV points:", len(positions))
+
+# -------------------------------------------------
+# RAY FUNCTION
+# -------------------------------------------------
+
+def ray_distance(origin, target):
+    direction = (target - origin).normalized()
+    result, location, normal, index, obj, matrix = scene.ray_cast(
+        depsgraph,
+        origin,
+        direction,
+        distance=1000
+    )
+    if result:
+        return (location - origin).length
+    else:
+        return (target - origin).length
+
+# -------------------------------------------------
+# SIMULATION LOOP
+# -------------------------------------------------
+
+results = []
+
+for idx, pos in enumerate(positions):
+
+    uav = mathutils.Vector(pos)
+    bs_loc = BS.location
+    ris_loc = RIS.location
+
+    # Direct distance
+    d_direct = (uav - bs_loc).length
+
+    # BS → RIS
+    d_br = ray_distance(bs_loc, ris_loc)
+
+    # RIS → UAV
+    d_ru = ray_distance(ris_loc, uav)
+
+    d_ris = d_br + d_ru
+
+    tau_direct = d_direct / c
+    tau_ris = d_ris / c
+
+    results.append([idx, d_direct, tau_direct, d_ris, tau_ris])
+
+print("Simulation finished.")
+
+# -------------------------------------------------
+# SAVE CSV
+# -------------------------------------------------
+
+blend_dir = os.path.dirname(bpy.data.filepath)
+
+if blend_dir == "":
+    print("Save Blender file first!")
+    raise Exception("Save .blend file before running")
+
+file_path = os.path.join(blend_dir, "channel_data.csv")
+
+with open(file_path, "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["id","d_direct","tau_direct","d_ris","tau_ris"])
+    writer.writerows(results)
+
+print("Saved file to:", file_path)
+print("=== DONE ===")
