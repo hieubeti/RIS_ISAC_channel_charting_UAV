@@ -1,26 +1,79 @@
-Project Objective
+# Channel Charting for UAV Navigation in RIS-Assisted ISAC Systems
 
-The goal of this project is to estimate the position of a UAV using wireless channel information in a RIS-assisted ISAC environment.
+This repository contains a Python-based simulation project for UAV localization in a Reconfigurable Intelligent Surface (RIS)-assisted Integrated Sensing and Communication (ISAC) system.
 
-Instead of relying only on GPS/GNSS, this project uses Channel State Information (CSI) or channel-related features collected from the communication system. These features are processed and mapped to UAV coordinates using channel charting and machine learning.
+The project focuses on generating wireless channel data, preprocessing Channel State Information (CSI), applying channel charting, and training a machine learning model to estimate UAV positions.
 
-Background
+## Project Overview
 
-In UAV navigation, traditional GNSS-based localization may become unreliable in urban, indoor, or obstructed environments. RIS-assisted ISAC systems can improve wireless propagation by introducing controllable reflected paths.
+Reliable UAV navigation is difficult in GNSS-denied environments such as urban canyons, indoor spaces, and complex low-altitude scenarios. This project uses wireless channel information instead of relying only on GPS/GNSS.
 
-This project follows the idea that wireless channel features are strongly related to physical UAV positions. By learning this relationship, the system can estimate UAV locations from channel measurements.
+The main idea is that CSI contains spatial information related to the UAV position. By learning the relationship between CSI and UAV coordinates, the system can estimate the UAV location using communication signals.
 
-Simulation Pipeline
+## Main Features
 
-The complete simulation workflow is:
+- RIS-assisted ISAC simulation
+- UAV localization using wireless channel data
+- CSI preprocessing and feature extraction
+- Channel charting for low-dimensional representation
+- Machine learning-based localization model
+- Training and evaluation pipeline
+- Dataset support using CSV format
+- Blender environment support for 3D simulation
 
+## Repository Structure
+
+```text
+.
+├── Blender_code/
+│   └── Blender environment scripts
+│
+├── README.md
+├── RIS_ISAC_dataset.csv
+├── channel_charting.py
+├── localization_model.py
+├── main.py
+├── preprocess.py
+└── train_model.py
+```
+
+## File Description
+
+| File / Folder | Description |
+|---|---|
+| `Blender_code/` | Contains Blender scripts used to create or modify the 3D simulation environment. |
+| `RIS_ISAC_dataset.csv` | Dataset containing simulated RIS-assisted ISAC channel features and UAV position labels. |
+| `preprocess.py` | Loads, cleans, normalizes, and splits the dataset. |
+| `channel_charting.py` | Applies channel charting or dimensionality reduction to CSI features. |
+| `localization_model.py` | Defines the machine learning model for UAV position prediction. |
+| `train_model.py` | Trains the localization model and saves training results. |
+| `main.py` | Runs the full pipeline from preprocessing to evaluation. |
+| `README.md` | Documentation for the project. |
+
+## System Model
+
+The simulated system contains:
+
+- Multiple Base Stations (BSs)
+- Multiple Reconfigurable Intelligent Surfaces (RISs)
+- One UAV receiver
+- Wireless channel measurements
+- UAV position labels
+- RIS-assisted reflected paths
+- Line-of-Sight and Non-Line-of-Sight propagation components
+
+The UAV receives pilot signals from base stations. The channel response is used as input data for localization.
+
+## Simulation Pipeline
+
+```text
 3D Environment Design
         ↓
-RIS / BS / UAV Deployment
+BS / RIS / UAV Deployment
         ↓
-Channel Data Generation
+Wireless Channel Data Generation
         ↓
-Dataset Construction
+CSI Dataset Construction
         ↓
 Data Preprocessing
         ↓
@@ -28,141 +81,192 @@ Channel Charting
         ↓
 Localization Model Training
         ↓
-Position Estimation and Evaluation
-Dataset
+UAV Position Estimation
+        ↓
+Performance Evaluation
+```
+
+## Dataset Format
 
 The dataset file is:
 
+```text
 RIS_ISAC_dataset.csv
+```
 
-The dataset is expected to contain simulated wireless channel features and UAV coordinate labels.
+A typical dataset format is:
 
-Example structure:
-
-feature_1, feature_2, feature_3, ..., x, y
+```text
+feature_1, feature_2, feature_3, ..., feature_n, x, y
+```
 
 Where:
 
-feature_1 ... feature_n are channel-related features.
-x and y are UAV position coordinates.
-Optional columns may include altitude, BS index, RIS index, SNR, or scenario type.
-Requirements
+- `feature_1 ... feature_n` are wireless channel or CSI-related features.
+- `x` and `y` are UAV position coordinates.
+- Optional columns may include altitude, SNR, BS index, RIS index, or scenario type.
 
-Install the required Python libraries:
+Example:
 
-pip install numpy pandas matplotlib scikit-learn tensorflow torch
+```csv
+csi_1,csi_2,csi_3,csi_4,x,y
+0.245,0.813,0.124,0.551,20.5,34.2
+0.231,0.802,0.118,0.547,21.0,34.5
+```
 
-Depending on your implementation, you may also need:
+## Installation
 
-pip install umap-learn
+Clone this repository:
 
-If the project uses PyTorch only:
+```bash
+git clone https://github.com/your-username/your-repository-name.git
+cd your-repository-name
+```
 
+Install the required Python packages:
+
+```bash
+pip install numpy pandas matplotlib scikit-learn
+```
+
+If your implementation uses deep learning, install one of the following:
+
+For PyTorch:
+
+```bash
 pip install torch torchvision torchaudio
+```
 
-If the project uses TensorFlow only:
+For TensorFlow:
 
+```bash
 pip install tensorflow
-How to Run
-1. Clone the Repository
-git clone <your-repository-link>
-cd <your-repository-name>
-2. Check the Dataset
+```
 
-Make sure the dataset exists in the project folder:
+For UMAP-based channel charting:
 
-RIS_ISAC_dataset.csv
-3. Run the Main Program
+```bash
+pip install umap-learn
+```
+
+## How to Run
+
+### Run the Full Pipeline
+
+```bash
 python main.py
+```
 
-This will run the full pipeline, including:
+This command performs:
 
-Loading the dataset
-Preprocessing the channel data
-Applying channel charting
-Training the localization model
-Evaluating localization accuracy
-4. Train the Model Separately
-python train_model.py
-5. Run Preprocessing Only
+1. Dataset loading
+2. Data preprocessing
+3. Channel charting
+4. Model training
+5. UAV position prediction
+6. Performance evaluation
+
+### Run Preprocessing Only
+
+```bash
 python preprocess.py
-6. Run Channel Charting Only
+```
+
+### Run Channel Charting Only
+
+```bash
 python channel_charting.py
-Main Components
-1. Blender Environment Generation
+```
 
-The Blender_code/ folder is used to build or export the 3D wireless environment.
+### Train the Localization Model
 
-This environment may include:
+```bash
+python train_model.py
+```
 
-Buildings
-UAV flight trajectory
-Base stations
-RIS panels
-Coordinate system
-Simulation area
+## Methodology
 
-The generated environment can be used for ray-tracing-based wireless channel simulation.
+### 1. Environment Generation
 
-2. Preprocessing
+The 3D simulation environment is created using Blender. The environment may contain buildings, roads, base stations, RIS panels, and UAV flight paths.
 
-The preprocessing stage prepares the raw dataset before training.
+The environment is used to support wireless channel simulation and dataset generation.
 
-Typical preprocessing steps include:
+### 2. CSI Data Processing
 
-Loading CSV data
-Removing invalid values
-Separating input features and coordinate labels
-Normalizing channel features
-Splitting data into training and testing sets
-3. Channel Charting
+The raw wireless channel data is processed before training. Preprocessing may include:
 
-Channel charting maps high-dimensional wireless channel data into a low-dimensional representation.
+- Removing invalid samples
+- Normalizing channel features
+- Separating input features and UAV labels
+- Splitting training and testing data
+- Converting CSI into a more useful feature representation
 
-The purpose is to preserve the spatial relationship between UAV positions. If two UAV positions are close in physical space, their channel chart representations should also be close.
+### 3. Channel Charting
 
-4. Localization Model
+Channel charting maps high-dimensional CSI data into a low-dimensional space while preserving spatial relationships.
+
+The goal is:
+
+```text
+Nearby UAV positions should have nearby channel chart representations.
+```
+
+This helps the model learn the relationship between wireless channels and physical UAV locations.
+
+### 4. Localization Model
 
 The localization model learns the mapping:
 
-Channel Features → UAV Position
+```text
+CSI Features → UAV Coordinates
+```
 
-The model predicts UAV coordinates from the processed channel data.
+The output of the model is the predicted UAV position:
 
-Example output:
+```text
+Predicted Position = (x, y)
+```
 
-Predicted position: x = 25.3 m, y = 41.8 m
-5. Training and Evaluation
+### 5. Evaluation
 
-The model is trained using labeled UAV position data.
+The localization performance can be evaluated using:
 
-Common evaluation metrics include:
+- Mean Absolute Error
+- Mean Squared Error
+- Root Mean Squared Error
+- Localization Distance Error
+- CE90 / 90th Percentile Error
+- Channel chart visualization
 
-Mean Absolute Error
-Mean Squared Error
-Root Mean Squared Error
-Localization distance error
-90th percentile positioning error
-Example Output
+## Example Output
 
-After running the project, the program may output results such as:
+After training, the program may display:
 
+```text
 Training completed.
 Mean Absolute Error: 3.66 m
 Root Mean Squared Error: 4.21 m
+90th Percentile Error: 5.71 m
+```
 
-The system may also generate plots such as:
+The project may also generate visual outputs such as:
 
-UAV ground-truth trajectory
-Predicted UAV trajectory
-Channel chart visualization
-Training loss curve
-Localization error distribution
-Expected Results
+- Ground-truth UAV trajectory
+- Predicted UAV trajectory
+- Channel chart plot
+- Training loss curve
+- Localization error distribution
 
-The project is expected to show that RIS-assisted channel information can improve UAV localization performance. Channel charting helps reduce the dependency on large amounts of labeled position data by learning the geometric structure of wireless channel measurements.
+## Expected Results
 
-Repository Update History
+The expected result is that the trained model can estimate UAV positions from wireless channel data.
+
+RIS deployment is expected to improve localization performance by creating additional reflected paths and increasing channel diversity.
+
+## Update History
+
+```text
 Blender_code
 Update Blender_code
 
@@ -186,19 +290,25 @@ Create preprocess.py
 
 train_model.py
 Update and rename train_modal.py to train_model.py
-Notes
-The dataset is simulation-based.
-The localization accuracy depends on the quality of the generated channel data.
-The Blender environment and RIS/BS placement should be consistent with the dataset.
-If using real ray tracing tools, make sure the exported environment and coordinate system are correctly aligned.
-Future Improvements
+```
+
+## Future Work
 
 Possible improvements include:
 
-Adding Sionna ray tracing support
-Adding RIS phase optimization
-Supporting LoS and NLoS scenario comparison
-Adding semi-supervised training
-Adding Siamese neural network-based channel charting
-Evaluating localization under different SNR values
-Visualizing UAV trajectory in 2D and 3D
+- Add Sionna ray-tracing support
+- Add LoS and NLoS scenario comparison
+- Add RIS phase shift optimization
+- Add semi-supervised learning
+- Add Siamese neural network-based channel charting
+- Add UAV trajectory visualization in 3D
+- Add SNR-based performance comparison
+- Add support for real-world CSI datasets
+
+## Reference
+
+This project is inspired by research on channel charting for UAV navigation in RIS-assisted ISAC systems.
+
+## License
+
+This project is for research and educational purposes.
